@@ -1,0 +1,25 @@
+I want to make a synth engine in SuperCollider for eventual use in a ShieldXL version of Norns from Monome. It contains a Raspberry Pi 4b for the CPU. It will be modeled after the Lyra-8 and the engine will be named 'Ygg'.
+
+It will have 8 voices and utilize voice stealing from the oldest voice. A note is considered on if it is still producing sound even during it's release phase. An easy way to achieve this is to treat the 8 voices as a ring and have an idx to the oldest starting with 1 that increments with each steal. 
+
+Each voice will have an attack parameter. Each voice will rise to velocity volume on noteOn. There will be no decay post attack. Each voice will fall over it's release time when triggered via noteOff. noteOff will not be a traditional noteOff event in that a global parameter hold is a percent of full volume that a note will hold at. If this value is zero, then the voice will eventually release to an off state. If the voice does not achieve it's full hold level before noteOff it will hold at the maximum it attained. A voice will have a vibrato frequency parameter. This vibrato will be Leslie like to expand the sound to stereo. If the vibrato frequency is set to zero then the voice will be mono and sent to both L and R channels. A harmonics parameter will range from 0 to 1. At harmonics 0 it is a sine wave, at harmonics 0.5 it is a square wave and at harmonics 1.0 it will be a saw wave with smooth transitions in between. These 8 voices will have a cross modulation matrix bus that can be changed, but for a voice it can chose it's modulation source between voice, lfo, predelay, predrive or main. Each voice will be ready for MPE by having a pitchBend and pressure parameter. Pressure can be used to modify the current hold amplitude. Each voice will have a modDepth parameter that controls depth of cross modulation. Pitch bend from MPE is in semitones. Pressure should scale linearly. 
+
+To summarize a voice will have the following parameters: freq, amp, attack, release, vibratoFreq, harmonics, pitchBend, pressure, modDepth, and modSrc.
+
+All voices are modified via a global hold parameter.
+
+These 8 voices will have be paired and summed for cross modulation: 12, 34, 56, 78 and have the following feedback choices for cross modulation globally: 'neighbor' 12 <-> 34 and 56 <-> 78, 'cross' 12 <-> 56 and 34 <-> 78, 'loop' 12 -> 34 -> 56 -> 78 -> 12. These routes denote what is used by a voice when it's modSrc is set to 'voice'. Changing routing can be done while the synth is active. The cros modulation should be as close to analogue as possible, which needs about 4 passes to settle. I suggest splitting modulation sources into fixed or known for that clock cycle and the feedback which requires settling and making 4 iterations to settle it. voices should be heard limited to prevent runaway feedback.
+
+There will be a global LFO that can be synced to an external clock. It will be either be a single frequency, the sum of two frequencies, the product of two frequencies or a soft FM. The LFO will thus have global parameters: freqA, freqB, style {'single', 'sum', 'product', 'fm'}. 
+
+There will be 2-tap variable delay. It will have the following parameters: delayTime1, delayTime2, delayMod1, delayMod2, delayFB, delayMix, delayModSrc {'lfo', 'self'} and delayModType {'smooth', 'jump'}. The jump is a square wave transform of the lfo. Maximum delay time is 2 seconds.
+
+Therw will be a global drive section after the delay which will add distortion. I would prefer an analogue tube style distortion. It will have a distDrive and distMix parameter. 
+
+vibratoDepth is a global parameter.
+
+Thus the global signal chain will be 8 voices (stereo) to delay to distortion to main out.
+
+The end goal is a Norns that can be played with an MPE controller to create evolving drones--with spectral harmony selected by the player. Open to suggestions for improvements towards goal.
+
+Please provide a first pass of SynthDefs to accomplish this and a short demo script in SuperCollider. It should be targetted towards becoming a Norn Engine. 
