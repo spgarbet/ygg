@@ -121,11 +121,8 @@ Engine_Ygg : CroneEngine
       );
       
       // Apply hold: during release (gate=0), don't go below hold level
-      // When gate=1, just use env normally
-      currentAmp = Select.ar(gate, [
-        env.max(hold),  // gate=0: hold at hold level (or env if higher)
-        env              // gate=1: use envelope normally
-      ]) * amp * pressure.linlin(0, 1, 0.5, 1.0);
+      // Scale amplitude by 0.5 per voice to leave headroom for 8 voices
+      currentAmp = env.max(hold * (1 - gate)) * amp * 0.5 * pressure.linlin(0, 1, 0.5, 1.0);
       
       sine = SinOsc.ar(finalFreq);
       square = Pulse.ar(finalFreq, 0.5);
@@ -145,11 +142,11 @@ Engine_Ygg : CroneEngine
       
       // Always use delay for stereo spread, depth controls amount
       leftSig = DelayC.ar(sig, 0.1, 
-        (vibratoL * vibratoDepth / finalFreq).abs.clip(0, 0.05)
+        (vibratoL * vibratoDepth / finalFreq).abs.clip(0.0001, 0.05)
       );
       
       rightSig = DelayC.ar(sig, 0.1, 
-        (vibratoR * vibratoDepth / finalFreq).abs.clip(0, 0.05)
+        (vibratoR * vibratoDepth / finalFreq).abs.clip(0.0001, 0.05)
       );
       
       leftSig = (leftSig * 2).softclip * 0.5;
@@ -169,14 +166,15 @@ Engine_Ygg : CroneEngine
       
       var mix;
       
-      mix = In.ar(voice1Bus, 2) +
+      // Sum all voice buses (stereo) and scale by 1/8 to prevent clipping
+      mix = (In.ar(voice1Bus, 2) +
             In.ar(voice2Bus, 2) +
             In.ar(voice3Bus, 2) +
             In.ar(voice4Bus, 2) +
             In.ar(voice5Bus, 2) +
             In.ar(voice6Bus, 2) +
             In.ar(voice7Bus, 2) +
-            In.ar(voice8Bus, 2);
+            In.ar(voice8Bus, 2)) * 0.125;  // 1/8 = 0.125
       
       Out.ar(out, mix);
     }).add;

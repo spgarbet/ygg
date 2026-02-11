@@ -29,8 +29,8 @@ fork
   // ================================================================
   "1. Creating evolving drone with hold...".postln;
   ~ygg.setHold(0.3);  // hold at 30% volume
-  ~ygg.setAllVoices(\attack, 5);
-  ~ygg.setAllVoices(\release, 3);
+  ~ygg.setAllVoices(\attack, 10);
+  ~ygg.setAllVoices(\release, 10);
   ~ygg.setAllVoices(\vibratoFreq, 6.0);
   ~ygg.setVibratoDepth(0.02);
 
@@ -142,6 +142,7 @@ fork
   8.wait;
 
   // Fade out
+  ~ygg.setHold(0.0);
   "Fading out...".postln;
   10.do
   {
