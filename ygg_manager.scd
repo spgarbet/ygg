@@ -97,26 +97,6 @@ if(SynthDescLib.global[\yggVoice].isNil)
         \voice8Bus, self.voiceBuses[7]
       ], addAction: \addBefore, target: self.delay);
       
-      self.crossMod = Synth(\yggCrossMod, [
-        \voice1Bus, self.voiceBuses[0],
-        \voice2Bus, self.voiceBuses[1],
-        \voice3Bus, self.voiceBuses[2],
-        \voice4Bus, self.voiceBuses[3],
-        \voice5Bus, self.voiceBuses[4],
-        \voice6Bus, self.voiceBuses[5],
-        \voice7Bus, self.voiceBuses[6],
-        \voice8Bus, self.voiceBuses[7],
-        \out1, self.modBuses[0],
-        \out2, self.modBuses[1],
-        \out3, self.modBuses[2],
-        \out4, self.modBuses[3],
-        \out5, self.modBuses[4],
-        \out6, self.modBuses[5],
-        \out7, self.modBuses[6],
-        \out8, self.modBuses[7],
-        \routing, self.routing
-      ], addAction: \addBefore, target: self.voiceMixer);
-      
       self.lfo = Synth(\yggLFO, [
         \out, self.lfoBus,
         \freqA, 0.1,
@@ -124,7 +104,7 @@ if(SynthDescLib.global[\yggVoice].isNil)
         \style, 0
       ], addAction: \addToHead);  // LFO can be anywhere, uses its own bus
       
-      // PRE-ALLOCATE ALL 8 VOICES - they stay alive forever
+      // PRE-ALLOCATE ALL 8 VOICES - they stay alive forever (at HEAD)
       "Creating 8 persistent voices...".postln;
       8.do { |i|
         self.voices[i] = Synth(\yggVoice, [
@@ -145,6 +125,27 @@ if(SynthDescLib.global[\yggVoice].isNil)
           \lfoBus, self.lfoBus
         ], addAction: \addToHead);
       };
+      
+      // CrossMod AFTER voices (reads voice buses, writes mod buses)
+      self.crossMod = Synth(\yggCrossMod, [
+        \voice1Bus, self.voiceBuses[0],
+        \voice2Bus, self.voiceBuses[1],
+        \voice3Bus, self.voiceBuses[2],
+        \voice4Bus, self.voiceBuses[3],
+        \voice5Bus, self.voiceBuses[4],
+        \voice6Bus, self.voiceBuses[5],
+        \voice7Bus, self.voiceBuses[6],
+        \voice8Bus, self.voiceBuses[7],
+        \out1, self.modBuses[0],
+        \out2, self.modBuses[1],
+        \out3, self.modBuses[2],
+        \out4, self.modBuses[3],
+        \out5, self.modBuses[4],
+        \out6, self.modBuses[5],
+        \out7, self.modBuses[6],
+        \out8, self.modBuses[7],
+        \routing, self.routing
+      ], addAction: \addAfter, target: self.voices[7]);  // After last voice
       
       "Ygg Engine initialized with 8 persistent voices.".postln;
     };
@@ -264,13 +265,9 @@ if(SynthDescLib.global[\yggVoice].isNil)
     if(param == \attack) { self.defaultAttack = value };
     if(param == \release) { self.defaultRelease = value };
     
-    8.do
-    {
-      arg i;
-      if(self.voices[i].notNil and: { self.voices[i].isPlaying })
-      {
-        self.voices[i].set(param, value);
-      };
+    // Update all voices (they're pre-allocated so always exist)
+    8.do { |i|
+      self.voices[i].set(param, value);
     };
   },
   

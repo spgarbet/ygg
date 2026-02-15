@@ -181,6 +181,7 @@ fork
 
 // Set hold level (0-1)
 ~ygg.setHold(0.5);
+~ygg.setHold(0.0);
 
 // Set vibrato depth
 ~ygg.setVibratoDepth(0.05);
@@ -195,7 +196,7 @@ fork
 ~ygg.setDelay(0.25, 0.5, 0.1, 0.15, 0.4, 0.5, 0);
 
 // Set distortion (drive, mix)
-~ygg.setDrive(2.0, 1.0);
+~ygg.setDrive(1.0, 1.0);
 
 // Set individual voice parameters
 ~ygg.setVoiceParam(0, \harmonics, 0.8);
@@ -211,3 +212,6 @@ fork
 
 // Cleanup
 ~ygg.free;
+
+~ygg.setAllVoices(\hold, 0.0);
+~ygg.setAllVoices(\pressure, 0.0);

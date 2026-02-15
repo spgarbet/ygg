@@ -58,7 +58,7 @@ SynthDef(\yggVoice,
 
   // Pitch bend and modulation
   finalFreq = freq * pitchBend.midiratio;
-  modSig = In.ar(modBus, 1);
+  modSig    = In.ar(modBus, 1);
   finalFreq = finalFreq + (modSig * modDepth * finalFreq * 0.5);
 
   // ARH Envelope: State-based amplitude control with hold threshold
@@ -88,7 +88,7 @@ SynthDef(\yggVoice,
 
   // Scale by amp parameter and leave headroom for 8 voices
   // ampControl = ampControl * amp * 0.5;
-  ampControl = ampControl * 0.5;
+  // ampControl = ampControl * 0.5;
 
   // Oscillator morphing: sine -> square -> saw
   sine = SinOsc.ar(finalFreq);
@@ -108,7 +108,7 @@ SynthDef(\yggVoice,
   vibratoL = SinOsc.ar(vibratoFreq, 0);
   vibratoR = SinOsc.ar(vibratoFreq, pi * 0.5);
 
-  // Actually, simpler: just always use delay, depth controls amount
+  // always use delay, depth controls amount
   leftSig = DelayC.ar(sig, 0.1,
     (vibratoL * vibratoDepth / finalFreq).abs.clip(0, 0.05)
   );
