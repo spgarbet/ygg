@@ -131,7 +131,9 @@ fork
   "8. Final spectral harmony...".postln;
   ~ygg.setHold(0.4);
   ~ygg.setAllVoices(\harmonics, 0.7);
+  ~ygg.setAllVoices(\modDepth, 0.1);
   ~ygg.setVibratoDepth(0.03);
+  ~ygg.setDrive(3.0, 0);
 
   // Spectral chord: fundamental + partials
   [48, 60, 67, 72, 76, 79, 82].do
@@ -143,14 +145,23 @@ fork
 
   8.wait;
 
-  // Fade out
-  "Fading out...".postln;
+  "Increasing distortion...".postln;
   10.do
   {
     arg i;
-    ~ygg.setDrive(3.0, 0.6 - (i * 0.06));
+    ~ygg.setDrive(6.0, 0.1*i);
     0.5.wait;
   };
+
+  "Reducing distortion...".postln;
+  10.do
+  {
+    arg i;
+    ~ygg.setDrive(6.0, 1.0 - (i * 0.1));
+    0.5.wait;
+  };
+
+  "Fading out now ...".postln;
   ~ygg.setHold(0.0);
 
   [48, 60, 67, 72, 76, 79, 82].do

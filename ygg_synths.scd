@@ -305,6 +305,8 @@ SynthDef(\yggDrive,
   wet = driven;
   dry = input;
 
+  //Out.ar(out, XFade2.ar(dry, wet, distMix * 2 - 1)*
+  //          distMix.linlin(0.0, 1.0, 1.0, 0.25));
   Out.ar(out, XFade2.ar(dry, wet, distMix * 2 - 1));
 }).add;
 
