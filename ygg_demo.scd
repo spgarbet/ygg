@@ -7,23 +7,20 @@
 thisProcess.nowExecutingPath.dirname +/+ "ygg_manager.scd".load;
 )
 
-// Initialize the engine
 (
-~ygg.init;
+  ~ygg.init;
 )
 
 (
-~ygg.free;
+  ~ygg.free;
 )
 
-// ====================================================================
-// DEMO SCRIPT
-// ====================================================================
+// Initialize the engine and run demo
 (
 fork
 {
-  // Wait for engine to initialize
-  1.wait;
+  // ~ygg.init;
+  // s.sync;  // Wait for init to complete
 
   "=== YGG ENGINE DEMO ===".postln;
   "".postln;
@@ -33,10 +30,9 @@ fork
   // ================================================================
   "1. Creating evolving drone with hold...".postln;
   ~ygg.setHold(0.3);  // hold at 30% volume
-  ~ygg.setAllVoices(\attack, 10);
-  ~ygg.setAllVoices(\release, 10);
+  ~ygg.setAllVoices(\attack, 0.5);
+  ~ygg.setAllVoices(\release, 3.0);
   ~ygg.setAllVoices(\vibratoFreq, 6.0);
-  ~ygg.setAllVoices(\harmonics, 1.0);
   ~ygg.setVibratoDepth(0.02);
 
   // Play a cluster
@@ -66,19 +62,19 @@ fork
   // 3. Cross-modulation routing changes
   // ================================================================
   "3. Changing cross-modulation routing...".postln;
-  ~ygg.setAllVoices(\modDepth, 200);
+  ~ygg.setAllVoices(\modDepth, 0.8);
 
-  ~ygg.setRouting(0);  // neighbor
-  "Routing: neighbor".postln;
-  5.wait;
+  ~ygg.setRouting(0);  // self-modulation
+  "Routing: self".postln;
+  3.wait;
 
   ~ygg.setRouting(1);  // cross
   "Routing: cross".postln;
-  5.wait;
+  3.wait;
 
-  ~ygg.setRouting(2);  // loop
-  "Routing: loop".postln;
-  5.wait;
+  ~ygg.setRouting(2);  // neighbor
+  "Routing: neighbor".postln;
+  3.wait;
 
   // ================================================================
   // 4. LFO modulation of delay
@@ -119,6 +115,7 @@ fork
   // ================================================================
   "7. Releasing notes...".postln;
   ~ygg.setHold(0.0);  // full release
+  ~ygg.setAllVoices(\release, 3.0);  // Make sure release is set
   [60, 64, 67, 71].do
   {
     arg note;
@@ -126,7 +123,7 @@ fork
     0.5.wait;
   };
 
-  10.wait;
+  4.wait;
 
   // ================================================================
   // 8. Final spectral harmony demonstration
@@ -147,7 +144,6 @@ fork
   8.wait;
 
   // Fade out
-  ~ygg.setHold(0.0);
   "Fading out...".postln;
   10.do
   {
@@ -155,6 +151,7 @@ fork
     ~ygg.setDrive(3.0, 0.6 - (i * 0.06));
     0.5.wait;
   };
+  ~ygg.setHold(0.0);
 
   [48, 60, 67, 72, 76, 79, 82].do
   {
@@ -166,7 +163,6 @@ fork
 
   "=== DEMO COMPLETE ===".postln;
 };
-)
 )
 
 // ====================================================================
@@ -181,7 +177,6 @@ fork
 
 // Set hold level (0-1)
 ~ygg.setHold(0.5);
-~ygg.setHold(0.0);
 
 // Set vibrato depth
 ~ygg.setVibratoDepth(0.05);
@@ -196,7 +191,7 @@ fork
 ~ygg.setDelay(0.25, 0.5, 0.1, 0.15, 0.4, 0.5, 0);
 
 // Set distortion (drive, mix)
-~ygg.setDrive(1.0, 1.0);
+~ygg.setDrive(6.0, 0.5);
 
 // Set individual voice parameters
 ~ygg.setVoiceParam(0, \harmonics, 0.8);
@@ -212,6 +207,3 @@ fork
 
 // Cleanup
 ~ygg.free;
-
-~ygg.setAllVoices(\hold, 0.0);
-~ygg.setAllVoices(\pressure, 0.0);

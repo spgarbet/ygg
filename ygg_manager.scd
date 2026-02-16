@@ -85,19 +85,6 @@ if(SynthDescLib.global[\yggVoice].isNil)
         \modType, 0
       ], addAction: \addBefore, target: self.drive);
       
-      // Voice mixer - sums all voices to delay input
-      self.voiceMixer = Synth(\yggVoiceMixer, [
-        \out, self.delayBus,
-        \voice1Bus, self.voiceBuses[0],
-        \voice2Bus, self.voiceBuses[1],
-        \voice3Bus, self.voiceBuses[2],
-        \voice4Bus, self.voiceBuses[3],
-        \voice5Bus, self.voiceBuses[4],
-        \voice6Bus, self.voiceBuses[5],
-        \voice7Bus, self.voiceBuses[6],
-        \voice8Bus, self.voiceBuses[7]
-      ], addAction: \addBefore, target: self.delay);
-      
       self.lfo = Synth(\yggLFO, [
         \out, self.lfoBus,
         \freqA, 0.1,
@@ -130,7 +117,7 @@ if(SynthDescLib.global[\yggVoice].isNil)
         ], target: self.voiceGroup, addAction: \addToTail);
       };
       
-      // CrossMod AFTER voice group (reads voice buses, writes mod buses)
+      // CrossMod AFTER all voices (target last voice, not the group)
       self.crossMod = Synth(\yggCrossMod, [
         \voice1Bus, self.voiceBuses[0],
         \voice2Bus, self.voiceBuses[1],
@@ -149,7 +136,20 @@ if(SynthDescLib.global[\yggVoice].isNil)
         \out7, self.modBuses[6],
         \out8, self.modBuses[7],
         \routing, self.routing
-      ], addAction: \addAfter, target: self.voiceGroup);  // After voice group
+      ], addAction: \addAfter, target: self.voices[7]);  // After last voice synth
+      
+      // Voice mixer AFTER CrossMod (so CrossMod runs first with InFeedback)
+      self.voiceMixer = Synth(\yggVoiceMixer, [
+        \out, self.delayBus,
+        \voice1Bus, self.voiceBuses[0],
+        \voice2Bus, self.voiceBuses[1],
+        \voice3Bus, self.voiceBuses[2],
+        \voice4Bus, self.voiceBuses[3],
+        \voice5Bus, self.voiceBuses[4],
+        \voice6Bus, self.voiceBuses[5],
+        \voice7Bus, self.voiceBuses[6],
+        \voice8Bus, self.voiceBuses[7]
+      ], addAction: \addAfter, target: self.crossMod);
       
       "Ygg Engine initialized with 8 persistent voices.".postln;
     };
@@ -265,14 +265,19 @@ if(SynthDescLib.global[\yggVoice].isNil)
       ^this;
     };
     
+    "setAllVoices: % = %".format(param, value).postln;
+    
     // Also update defaults for future voices
     if(param == \attack) { self.defaultAttack = value };
     if(param == \release) { self.defaultRelease = value };
     
     // Update all voices (they're pre-allocated so always exist)
     8.do { |i|
+      "  Setting voice[%].set(%, %)".format(i, param, value).postln;
       self.voices[i].set(param, value);
     };
+    
+    "setAllVoices complete".postln;
   },
   
   // ================================================================

@@ -58,7 +58,12 @@ SynthDef(\yggVoice,
 
   // Pitch bend and modulation
   finalFreq = freq * pitchBend.midiratio;
-  modSig    = In.ar(modBus, 1);
+  modSig    = InFeedback.ar(modBus, 1);  // Use InFeedback to read previous cycle
+
+  // DEBUG: Poll modDepth to see what value the synth actually has
+  //modDepth.poll(10, "modDepth");
+  //modSig.poll(10, "modSig");
+
   finalFreq = finalFreq + (modSig * modDepth * finalFreq * 0.5);
 
   // ARH Envelope: State-based amplitude control with hold threshold
@@ -168,14 +173,15 @@ SynthDef(\yggCrossMod,
   var i;
 
   // Read voice pairs (summed L+R to mono)
-  v1 = In.ar(voice1Bus, 2).sum;
-  v2 = In.ar(voice2Bus, 2).sum;
-  v3 = In.ar(voice3Bus, 2).sum;
-  v4 = In.ar(voice4Bus, 2).sum;
-  v5 = In.ar(voice5Bus, 2).sum;
-  v6 = In.ar(voice6Bus, 2).sum;
-  v7 = In.ar(voice7Bus, 2).sum;
-  v8 = In.ar(voice8Bus, 2).sum;
+  // Use InFeedback to avoid conflicting with VoiceMixer reading same buses
+  v1 = InFeedback.ar(voice1Bus, 2).sum;
+  v2 = InFeedback.ar(voice2Bus, 2).sum;
+  v3 = InFeedback.ar(voice3Bus, 2).sum;
+  v4 = InFeedback.ar(voice4Bus, 2).sum;
+  v5 = InFeedback.ar(voice5Bus, 2).sum;
+  v6 = InFeedback.ar(voice6Bus, 2).sum;
+  v7 = InFeedback.ar(voice7Bus, 2).sum;
+  v8 = InFeedback.ar(voice8Bus, 2).sum;
 
   // Sum pairs
   pair1 = v1 + v2;
@@ -185,18 +191,18 @@ SynthDef(\yggCrossMod,
 
   // Convert routing to audio rate (will update each sample)
   routingAudio = K2A.ar(routing);
-  
+
   // 4 iterations to settle feedback
   4.do
   {
     // Select modulation sources based on current routing
     #mod12, mod34, mod56, mod78 = Select.ar(routingAudio, [
-      // 0: neighbor (12 <-> 34, 56 <-> 78)
-      [pair2, pair1, pair4, pair3],
+      // 0: pair self-modulation (12 <-> 12, 34 <-> 34, etc)
+      [pair1, pair2, pair3, pair4],
       // 1: cross (12 <-> 56, 34 <-> 78)
       [pair3, pair4, pair1, pair2],
-      // 2: loop (12 -> 34 -> 56 -> 78 -> 12)
-      [pair4, pair1, pair2, pair3]
+      // 2: neighbor (12 <-> 34, 56 <-> 78)
+      [pair2, pair1, pair4, pair3]
     ]);
 
     // Update pairs with feedback (reduced amount and stronger limiting)
@@ -273,15 +279,30 @@ SynthDef(\yggDrive,
 
   input = In.ar(in, 2);
 
-  // Tube-style soft saturation
-  driven = (input * distDrive).tanh;
+  // RAT-style aggressive distortion
+  // Pre-gain boost
+  driven = input * distDrive.linexp(1.0, 10.0, 1.0, 100.0);
+
+  // Hard clipping (RAT uses op-amp clipping)
+  driven = driven.clip2(1.0);
+
+  // Add some asymmetry for more character
+  driven = (driven * 1.2).fold2(1.0);
+
+  // High-pass filter (RAT has a ~60Hz HPF)
+  driven = HPF.ar(driven, 60);
+
+  // Low-pass filter for smoothing (RAT has ~5kHz LPF)
+  driven = LPF.ar(driven, 5000);
+
+  // DC blocker
   driven = LeakDC.ar(driven);
 
-  // Additional warmth via even harmonics
-  driven = (driven + (driven.squared * 0.2)).softclip;
+  // Output gain compensation (louder as drive increases)
+  driven = driven * distDrive.linlin(1.0, 10.0, 1.0, 0.5);
 
   // Mix
-  wet = driven * 0.7;  // compensate for gain
+  wet = driven;
   dry = input;
 
   Out.ar(out, XFade2.ar(dry, wet, distMix * 2 - 1));
