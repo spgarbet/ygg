@@ -164,7 +164,7 @@ SynthDef(\yggCrossMod,
       voice7Bus=0, voice8Bus=0,
       out1=0, out2=0, out3=0, out4=0,
       out5=0, out6=0, out7=0, out8=0,
-      routing=0;  // 0=neighbor, 1=cross, 2=loop
+      routing=0;  // 0=self, 1=cross, 2=neighbor, 3=loop
 
   var v1, v2, v3, v4, v5, v6, v7, v8;
   var pair1, pair2, pair3, pair4;
@@ -202,7 +202,9 @@ SynthDef(\yggCrossMod,
       // 1: cross (12 <-> 56, 34 <-> 78)
       [pair3, pair4, pair1, pair2],
       // 2: neighbor (12 <-> 34, 56 <-> 78)
-      [pair2, pair1, pair4, pair3]
+      [pair2, pair1, pair4, pair3],
+	  // 3: loop (12 -> 34 -> 56 -> 78 -> 12)
+	  [pair4, pair1, pair2, pair3]
     ]);
 
     // Update pairs with feedback (reduced amount and stronger limiting)
@@ -305,9 +307,9 @@ SynthDef(\yggDrive,
   wet = driven;
   dry = input;
 
-  //Out.ar(out, XFade2.ar(dry, wet, distMix * 2 - 1)*
-  //          distMix.linlin(0.0, 1.0, 1.0, 0.25));
-  Out.ar(out, XFade2.ar(dry, wet, distMix * 2 - 1));
+  Out.ar(out, XFade2.ar(dry, wet, distMix * 2 - 1)*
+            distMix.linlin(0.0, 1.0, 1.0, 0.3));
+  //Out.ar(out, XFade2.ar(dry, wet, distMix * 2 - 1));
 }).add;
 
 "Ygg SynthDefs loaded.".postln;

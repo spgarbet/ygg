@@ -295,7 +295,8 @@ Engine_Ygg : CroneEngine {
         #mod12, mod34, mod56, mod78 = Select.ar(routingAudio, [
           [pair1, pair2, pair3, pair4], // Self
           [pair3, pair4, pair1, pair2], // Cross
-          [pair2, pair1, pair4, pair3]  // Neighbor
+          [pair2, pair1, pair4, pair3], // Neighbor
+	      [pair4, pair1, pair2, pair3]
         ]);
 
         pair1 = (v1 + v2 + (mod12 * 0.2)).clip2(2).softclip;
@@ -370,7 +371,7 @@ Engine_Ygg : CroneEngine {
       dry = input;
 
       Out.ar(out, XFade2.ar(dry, wet, distMix * 2 - 1)*
-            distMix.linlin(0.0, 1.0, 1.0, 0.1));
+            distMix.linlin(0.0, 1.0, 1.0, 0.3));
     }).add;
   }
 
@@ -450,7 +451,7 @@ Engine_Ygg : CroneEngine {
     this.addCommand(\routing, "i",
     {
       arg msg;
-      routing = msg[1].asInteger.clip(0, 2);
+      routing = msg[1].asInteger.clip(0, 3);
       crossMod.set(\routing, routing);
     });
 
