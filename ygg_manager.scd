@@ -21,7 +21,7 @@ if(SynthDescLib.global[\yggVoice].isNil)
   lfoBus: nil,
   delayBus: nil,
   driveBus: nil,
-  
+
   // Synth nodes
   voices: nil,
   voiceGroup: nil,
@@ -30,24 +30,24 @@ if(SynthDescLib.global[\yggVoice].isNil)
   lfo: nil,
   delay: nil,
   drive: nil,
-  
+
   // Voice allocation
   voiceIdx: 1,  // ring buffer index for voice stealing
   activeNotes: nil,  // dict of midi note -> voice index
-  
+
   // Global parameters
   hold: 0.0,
   vibratoDepth: 0.01,
   routing: 0,  // 0=neighbor, 1=cross, 2=loop
   defaultAttack: 0.1,
   defaultRelease: 1.0,
-  
+
   // ================================================================
   // INITIALIZATION
   // ================================================================
   init: {
     arg self;
-    
+
     s.waitForBoot
     {
       // Allocate buses
@@ -56,24 +56,24 @@ if(SynthDescLib.global[\yggVoice].isNil)
       self.lfoBus = Bus.audio(s, 1);
       self.delayBus = Bus.audio(s, 2);
       self.driveBus = Bus.audio(s, 2);
-      
+
       // Initialize voice tracking
       self.voices = Array.newClear(8);
       self.activeNotes = Dictionary.new;
-      
+
       // Wait for SynthDefs to load
       s.sync;
-      
+
       // Create synth chain with proper ordering
       // Order: Voices(head) -> CrossMod -> VoiceMixer -> Delay -> Drive(tail)
-      
+
       self.drive = Synth(\yggDrive, [
         \in, self.driveBus,
         \out, 0,
         \distDrive, 1.0,
         \distMix, 0.0
       ], addAction: \addToTail);
-      
+
       self.delay = Synth(\yggDelay, [
         \in, self.delayBus,
         \out, self.driveBus,
@@ -84,17 +84,17 @@ if(SynthDescLib.global[\yggVoice].isNil)
         \lfoBus, self.lfoBus,
         \modType, 0
       ], addAction: \addBefore, target: self.drive);
-      
+
       self.lfo = Synth(\yggLFO, [
         \out, self.lfoBus,
         \freqA, 0.1,
         \freqB, 0.2,
         \style, 0
       ], addAction: \addToHead);  // LFO can be anywhere, uses its own bus
-      
+
       // Create a group for voices to ensure they stay together
       self.voiceGroup = Group.new(addAction: \addToHead);
-      
+
       // PRE-ALLOCATE ALL 8 VOICES in the voice group
       "Creating 8 persistent voices...".postln;
       8.do { |i|
@@ -116,7 +116,7 @@ if(SynthDescLib.global[\yggVoice].isNil)
           \lfoBus, self.lfoBus
         ], target: self.voiceGroup, addAction: \addToTail);
       };
-      
+
       // CrossMod AFTER all voices (target last voice, not the group)
       self.crossMod = Synth(\yggCrossMod, [
         \voice1Bus, self.voiceBuses[0],
@@ -137,7 +137,7 @@ if(SynthDescLib.global[\yggVoice].isNil)
         \out8, self.modBuses[7],
         \routing, self.routing
       ], addAction: \addAfter, target: self.voices[7]);  // After last voice synth
-      
+
       // Voice mixer AFTER CrossMod (so CrossMod runs first with InFeedback)
       self.voiceMixer = Synth(\yggVoiceMixer, [
         \out, self.delayBus,
@@ -150,136 +150,136 @@ if(SynthDescLib.global[\yggVoice].isNil)
         \voice7Bus, self.voiceBuses[6],
         \voice8Bus, self.voiceBuses[7]
       ], addAction: \addAfter, target: self.crossMod);
-      
+
       "Ygg Engine initialized with 8 persistent voices.".postln;
     };
   },
-  
+
   // ================================================================
   // NOTE ON - voice stealing with pre-allocated voices
   // ================================================================
   noteOn: {
     arg self, note, vel=127;
     var voiceNum, freq, amp, existingVoice;
-    
+
     freq = note.midicps;
     amp = vel.linlin(0, 127, 0, 1);
-    
+
     // Check if this note is already assigned to a voice
     existingVoice = self.activeNotes[note];
-    
+
     if(existingVoice.notNil)
     {
       // Note already playing - just update it
       voiceNum = existingVoice;
-      ("Note On (update): " ++ note ++ " -> Voice " ++ voiceNum).postln;
+      //("Note On (update): " ++ note ++ " -> Voice " ++ voiceNum).postln;
     }
     {
       // Steal the next voice in round-robin
       voiceNum = self.voiceIdx - 1;  // Convert to 0-indexed
       self.voiceIdx = (self.voiceIdx % 8) + 1;
-      
+
       // Remove old note mapping if this voice was playing something
       self.activeNotes.keysValuesDo { |oldNote, oldVoice|
         if(oldVoice == voiceNum) {
           self.activeNotes.removeAt(oldNote);
         };
       };
-      
-      ("Note On (steal): " ++ note ++ " -> Voice " ++ voiceNum).postln;
+
+      // ("Note On (steal): " ++ note ++ " -> Voice " ++ voiceNum).postln;
     };
-    
+
     // Configure the voice (it already exists, just set parameters)
     self.voices[voiceNum].set(
       \freq, freq,
       \amp, amp,
       \pressure, 1.0  // Turn on
     );
-    
+
     self.activeNotes[note] = voiceNum;
   },
-  
+
   // ================================================================
   // NOTE OFF - releases pressure
   // ================================================================
   noteOff: {
     arg self, note;
     var voiceNum;
-    
+
     voiceNum = self.activeNotes[note];
-    
+
     if(voiceNum.notNil)
     {
       // Set pressure to 0 - voice will release toward hold level
       self.voices[voiceNum].set(\pressure, 0.0);
-      ("Note Off: " ++ note ++ " (Voice " ++ voiceNum ++ " -> release)").postln;
-      
+      //("Note Off: " ++ note ++ " (Voice " ++ voiceNum ++ " -> release)").postln;
+
       // NOTE: We intentionally keep the note in activeNotes
       // This allows noteOn to find and reuse this voice while it's still sounding
       // The mapping is only removed when the voice is actually stolen for a new note
     };
   },
-  
+
   // ================================================================
   // MPE CONTROLS
   // ================================================================
   setPitchBend: {
     arg self, note, bendSemitones;
     var voiceNum = self.activeNotes[note];
-    
+
     if(voiceNum.notNil)
     {
       self.voices[voiceNum].set(\pitchBend, bendSemitones);
     };
   },
-  
+
   setPressure: {
     arg self, note, pressure;  // 0-1
     var voiceNum = self.activeNotes[note];
-    
+
     if(voiceNum.notNil and: { self.voices[voiceNum].notNil and: { self.voices[voiceNum].isPlaying } })
     {
       // Pressure can drive amplitude below hold, enabling organic fades
       self.voices[voiceNum].set(\pressure, pressure);
     };
   },
-  
+
   // ================================================================
   // VOICE PARAMETER CONTROLS
   // ================================================================
   setVoiceParam: {
     arg self, voiceNum, param, value;
-    
+
     if(self.voices[voiceNum].notNil)
     {
       self.voices[voiceNum].set(param, value);
     };
   },
-  
+
   setAllVoices: {
     arg self, param, value;
-    
+
     if(self.voices.isNil)
     {
       "Warning: setAllVoices called before engine initialized".postln;
       ^this;
     };
-    
-    "setAllVoices: % = %".format(param, value).postln;
-    
+
+    // "setAllVoices: % = %".format(param, value).postln;
+
     // Also update defaults for future voices
     if(param == \attack) { self.defaultAttack = value };
     if(param == \release) { self.defaultRelease = value };
-    
+
     // Update all voices (they're pre-allocated so always exist)
     8.do { |i|
-      "  Setting voice[%].set(%, %)".format(i, param, value).postln;
+      // "  Setting voice[%].set(%, %)".format(i, param, value).postln;
       self.voices[i].set(param, value);
     };
-    
-    "setAllVoices complete".postln;
+
+    //"setAllVoices complete".postln;
   },
-  
+
   // ================================================================
   // GLOBAL PARAMETER CONTROLS
   // ================================================================
@@ -288,24 +288,24 @@ if(SynthDescLib.global[\yggVoice].isNil)
     self.hold = value.clip(0, 1);
     self.setAllVoices(\hold, self.hold);
   },
-  
+
   setVibratoDepth: {
     arg self, value;
     self.vibratoDepth = value;
     self.setAllVoices(\vibratoDepth, self.vibratoDepth);
   },
-  
+
   setRouting: {
     arg self, value;  // 0=neighbor, 1=cross, 2=loop
     self.routing = value.clip(0, 2);
     self.crossMod.set(\routing, self.routing);
   },
-  
+
   setLFO: {
     arg self, freqA, freqB, style;
     self.lfo.set(\freqA, freqA, \freqB, freqB, \style, style);
   },
-  
+
   setDelay: {
     arg self, time1, time2, mod1, mod2, fb, mix, modType;
     self.delay.set(
@@ -318,18 +318,18 @@ if(SynthDescLib.global[\yggVoice].isNil)
       \modType, modType
     );
   },
-  
+
   setDrive: {
     arg self, drive, mix;
     self.drive.set(\distDrive, drive, \distMix, mix);
   },
-  
+
   // ================================================================
   // CLEANUP
   // ================================================================
   free: {
     arg self;
-    
+
     // Immediately free all synths
     self.voices.do { arg v; if(v.notNil) { v.free } };
     if(self.voiceGroup.notNil) { self.voiceGroup.free };
@@ -338,13 +338,13 @@ if(SynthDescLib.global[\yggVoice].isNil)
     if(self.lfo.notNil) { self.lfo.free };
     if(self.delay.notNil) { self.delay.free };
     if(self.drive.notNil) { self.drive.free };
-    
+
     self.voiceBuses.do { arg b; b.free };
     self.modBuses.do { arg b; b.free };
     self.lfoBus.free;
     self.delayBus.free;
     self.driveBus.free;
-    
+
     "Ygg Engine freed.".postln;
   }
 );
