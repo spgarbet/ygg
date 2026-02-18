@@ -1,6 +1,3 @@
--- Ygg C11 Chord Stepper
--- E2: Move Left/Right  E3: Move Up/Down  K3: Next Step
-
 engine.name = 'Ygg'
 
 -- For play demo
@@ -16,7 +13,7 @@ local ROWS        = 4
 local grid_x      = { 15, 48, 17, 46, 17, 46, 24, 38 }
 local grid_y      = {  9,  9, 22, 22, 39, 39, 53, 53 }
 local patch_name  = { 'Sol',  'Mani', 'Huginn', 'Muninn', 'Asgard', 'Midgard', 'Jormun', 'Gandr' }
-local page_name = { 'Ygg', 'LFO', 'Delay', 'Dist', 'V1', 'V2' , 'V3' , 'V4', 'V5' ,'V6', 'V7', 'V8', 'Demo' }
+local page_name   = { 'Ygg', 'LFO', 'Delay', 'Dist', 'V1', 'V2' , 'V3' , 'V4', 'V5' ,'V6', 'V7', 'V8', 'Demo' }
 
 -- STATE Current lattice position (col and row, 1-indexed)
 local col   = 1
@@ -164,6 +161,12 @@ function draw_ygg()
   screen.text("E3: ^ or v")
 end
 
+function draw_LFO()
+  screen.level(15)
+  screen.move(2,22)
+  screen.text("Freq 1:")
+end
+
 function draw_demo()
   screen.level(15)
   screen.move(2, 32)
@@ -187,11 +190,13 @@ function redraw()
     draw_ygg()
   end
   
+  if page_name[page] == 'LFO' then
+    draw_LFO()
+  end
+  
   if page_name[page] == 'Demo' then
     draw_demo()
   end
 
   screen.update()
 end
-
-
