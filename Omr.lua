@@ -164,6 +164,12 @@ function draw_ygg()
   screen.text("E3: ^ or v")
 end
 
+function draw_demo()
+  screen.level(15)
+  screen.move(2, 32)
+  screen.text("K2: Do Something")
+end
+
 function redraw()
   screen.clear()
 
@@ -176,9 +182,13 @@ function redraw()
     screen.text_right(page_name[page])
   end
 
-  if page == 1 then
+  if page_name[page] == 'Ygg' then
     screen.display_image(tree, 64, 0)
     draw_ygg()
+  end
+  
+  if page_name[page] == 'Demo' then
+    draw_demo()
   end
 
   screen.update()
