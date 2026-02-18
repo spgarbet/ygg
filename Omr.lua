@@ -24,8 +24,9 @@ local patch = 1
 local blink = false
 local blink_timer
 
--- STATE Current Page
+-- STATE Current Page / Local Param
 local page = 1
+local lfo_param = 1
 
 -- Params
 local specs =
@@ -207,19 +208,30 @@ function key(n, z)
 end
 
 function enc(n, d)
-  if page == 1 then
+  if page_name[page] == 'Ygg' then
     if n == 2 then
-      -- E2: move left/right (columns), no wrap
-      col = util.clamp(col + (d > 0 and 1 or -1), 1, COLS)
-      patch  = (row-1)*COLS+col
-      redraw()
-    elseif n == 3 then
-      -- E3: move up/down (rows), no wrap
+      -- E2: move up/down (rows), no wrap
       row    = util.clamp(row - (d > 0 and 1 or -1), 1, ROWS)
       patch  = (row-1)*COLS+col
-      redraw()
+    elseif n == 3 then
+      -- E3: move left/right (columns), no wrap
+      col = util.clamp(col + (d > 0 and 1 or -1), 1, COLS)
+      patch  = (row-1)*COLS+col
     end
+  elseif page_name[page] == 'LFO' then
+    if n == 2 then
+      lfo_param = util.clamp(lfo_param + (d > 0 and 1 or -1), 1, 3)
+    elseif n == 3 then
+      if lfo_param == 1 then
+        params:delta("ygg_lfo_style", d)
+      elseif lfo_param == 2 then
+        params:delta("ygg_lfo_freq_a", d)
+      elseif lfo_param == 3 then
+        params:delta("ygg_lfo_freq_b", d)
+      end
+    end 
   end
+  redraw()
 end
 
 local function draw_star(x, y)
@@ -265,9 +277,9 @@ function draw_ygg()
   screen.move(2, 32)
   screen.text("K3: Panic")
   screen.move(2, 42)
-  screen.text("E2: < or >")
+  screen.text("E2: ^ or v")
   screen.move(2, 52)
-  screen.text("E3: ^ or v")
+  screen.text("E3: < or >")
 end
 
 function draw_LFO()
@@ -276,25 +288,20 @@ function draw_LFO()
   local freq_a      = params:get("ygg_lfo_freq_a")
   local freq_b      = params:get("ygg_lfo_freq_b")
 
-  screen.level(4)
-  screen.move(2, 22)
-  screen.text("LFO")
-  screen.move(2, 32)
-  screen.text("Freq A")
-  screen.move(2, 42)
-  screen.text("Freq B")
-  screen.move(2, 52)
-  screen.text("Style")
+  local labels  = { "Style", "FreqA", "FreqB" }
+  local values  = { style_names[style], string.format("%.2f Hz", freq_a), string.format("%.2f Hz", freq_b) }
 
-  screen.level(15)
-  screen.move(126, 22)
-  screen.text_right(style_names[style])
-  screen.move(126, 32)
-  screen.text_right(string.format("%.2f Hz", freq_a))
-  screen.move(126, 42)
-  screen.text_right(string.format("%.2f Hz", freq_b))
-  screen.move(126, 52)
-  screen.text_right(style_names[style])
+  for i = 1, 3 do
+    local y = 32 + ((i - 1) * 10)
+
+    screen.level(lfo_param == i and 15 or 4)
+    screen.move(2, y)
+    screen.text(labels[i])
+
+    screen.level(lfo_param == i and 15 or 10)
+    screen.move(30, y)
+    screen.text(values[i])
+  end 
 end
 
 function draw_demo()
