@@ -338,18 +338,18 @@ function key(n, z)
   if z ~= 1 or n == 1 then return end
 
   if n == 2 then
-    if page < #page_name then
-      page = page + 1
-    else
-      play()
-    end
-  end
-
-  if n == 3 then
     if page > 1 then
       page = page - 1
     else
       panic()
+    end
+  end
+
+  if n == 3 then
+    if page < #page_name then
+      page = page + 1
+    else
+      play()
     end
   end
 
@@ -428,9 +428,9 @@ function draw_ygg()
 
   screen.level(15)
   screen.move(2, 22)
-  screen.text("K2: Config")
+  screen.text("K2: Panic")
   screen.move(2, 32)
-  screen.text("K3: Panic")
+  screen.text("K3: Config")
   screen.move(2, 42)
   screen.text("E2: ^ or v")
   screen.move(2, 52)
@@ -440,7 +440,7 @@ end
 function draw_demo()
   screen.level(15)
   screen.move(2, 32)
-  screen.text("K2: Do Something")
+  screen.text("K3: Do Something")
 end
 
 -- ============================================================
@@ -472,3 +472,4 @@ function redraw()
 
   screen.update()
 end
+
