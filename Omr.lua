@@ -125,7 +125,7 @@ function add_params()
   end
 
   params:add_option("ygg_routing", "routing",
-    { "Self", "Cross", "Neighbor", "Rotate" }, 1)
+    { "Self", "Cross", "Neighbor", "Loop" }, 1)
   params:set_action("ygg_routing",
     function(v) engine.routing(v - 1) end)
 
@@ -143,7 +143,8 @@ end
 -- Option params carry a values[] list for display.
 -- ============================================================
 
-local style_names = { "Sine A", "A+B Mix", "Ring Mod", "Slewed" }
+local style_names   = { "Sine A", "A+B Mix", "Ring Mod", "Slewed" }
+local routing_names = { "Self", "Cross", "Neighbor", "Loop" }
 
 local page_rows =
 {
@@ -154,6 +155,7 @@ local page_rows =
     { label = "Hld",  id = "ygg_hold"      },
     { label = "Har",  id = "ygg_harmonics" },
     { label = "Dpth", id = "ygg_mod_depth" },
+    { label = "Rout", id = "ygg_routing",  values = routing_names },
   },
   ["LFO"] =
   {
