@@ -526,6 +526,30 @@ Engine_Ygg : CroneEngine {
       var voiceNum = msg[1].asInteger.clip(0, 7);
       voices[voiceNum].set(\vibratoFreq, msg[2]);
     });
+
+    this.addCommand(\pitch_bend, "if",
+    {
+      arg msg;
+      var note     = msg[1].asInteger;
+      var bend_st  = msg[2];
+      var voiceNum = activeNotes[note];
+      if(voiceNum.notNil)
+      {
+        voices[voiceNum].set(\pitchBend, bend_st);
+      };
+    });
+
+    this.addCommand(\pressure, "if",
+    {
+      arg msg;
+      var note     = msg[1].asInteger;
+      var pressure = msg[2];
+      var voiceNum = activeNotes[note];
+      if(voiceNum.notNil)
+      {
+        voices[voiceNum].set(\pressure, pressure);
+      };
+    });
   }
 
   noteOn
