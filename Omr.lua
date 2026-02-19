@@ -1,6 +1,7 @@
 engine.name = 'Ygg'
 
 local gen_sequence = require('ygg/lib/gen_sequence')
+local sequins      = require('sequins')
 
 -- File paths
 local SAVE_DIR      = _path.data .. "ygg/"
