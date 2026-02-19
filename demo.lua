@@ -136,11 +136,16 @@ local function gen_sequence(seed, tonic, scale_name, attack_time, release_time)
   local root_II = scale[2]  -- degree 2
   local root_V  = scale[5] - 12  -- degree 5, dropped an octave so the 3rd-in-bass
                                   -- sits a half step below the tonic
+  local root_VI = scale[6]       -- degree 6
+  local root_III = scale[3]      -- degree 3
+
 
   -- Build raw 8-note extended voicings
   local I_raw  = build_voicing(tonic, root_I,  CHORD_INTERVALS.I)
   local II_raw = build_voicing(tonic, root_II, CHORD_INTERVALS.II)
   local V6_raw = build_voicing(tonic, root_V,  CHORD_INTERVALS.V6)
+  local VI_raw  = build_voicing(tonic, root_VI,  CHORD_INTERVALS.I)   -- major 13 voicing
+  local III_raw = build_voicing(tonic, root_III, CHORD_INTERVALS.I)   -- major 13 voicing
 
   -- Apply the same random permutation to all three chords so the
   -- rhythmic contour is shared across harmonic areas
@@ -148,6 +153,11 @@ local function gen_sequence(seed, tonic, scale_name, attack_time, release_time)
   local I   = reorder(I_raw,  perm)
   local II  = reorder(II_raw, perm)
   local V6  = reorder(V6_raw, perm)
+  local VI  = reorder(VI_raw,  perm)
+  local III = reorder(III_raw, perm)
+
+  local VI_slice  = slice(VI,  s, s + 3)
+  local III_slice = slice(III, s, s + 3)
 
   -- Build wait times
   -- Total window = attack_time * 8; 7 random interior points divide it into 8 intervals
@@ -175,10 +185,10 @@ local function gen_sequence(seed, tonic, scale_name, attack_time, release_time)
   local note_stack = concat(
     I,
     V6,
-    I_slice,
-    I_slice,
-    V6_slice,
-    V6_slice,
+    I_slice,    -- I slice repeat 1
+    VI_slice,   -- I slice repeat 2 -> transposed to VI
+    V6_slice,   -- V6 slice repeat 1
+    III_slice,  -- V6 slice repeat 2 -> transposed to III
     II,
     V6,
     I
@@ -223,9 +233,9 @@ local function gen_sequence(seed, tonic, scale_name, attack_time, release_time)
   local vel_I_a   = build_velocities(60, perm)   -- section 1 I
   local vel_V6_a  = build_velocities(75, perm)   -- section 1 V6
   local vel_Is1   = build_velocities(40, perm)   -- I slice repeat 1
-  local vel_Is2   = build_velocities(55, perm)   -- I slice repeat 2
+  local vel_Is2   = build_velocities(55, perm)   -- VI slice repeat 2
   local vel_V6s1  = build_velocities(65, perm)   -- V6 slice repeat 1
-  local vel_V6s2  = build_velocities(55, perm)   -- V6 slice repeat 2
+  local vel_V6s2  = build_velocities(55, perm)   -- III slice repeat 2
   local vel_II    = build_velocities(55, perm)   -- II section
   local vel_V6_b  = build_velocities(80, perm)   -- closing V6
   local vel_I_b   = build_velocities(40, perm)   -- closing I
