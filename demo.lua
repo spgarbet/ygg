@@ -111,6 +111,17 @@ local function build_voicing(tonic, root_offset, intervals)
   return notes
 end
 
+-- Builds 8 velocity values centred on `centre` with +/-15 random variation,
+-- reordered by `perm` so velocity contour matches the note permutation.
+-- Values are clamped to [1, 127].
+local function build_velocities(centre, perm)
+  local raw = {}
+  for i = 1, 8 do
+    raw[i] = math.max(1, math.min(127, centre + math.random(-15, 15)))
+  end
+  return reorder(raw, perm)
+end
+
 local function gen_sequence(seed, tonic, scale_name, attack_time, release_time)
   math.randomseed(seed)
 
@@ -123,7 +134,8 @@ local function gen_sequence(seed, tonic, scale_name, attack_time, release_time)
   -- Chord roots derived from the scale (0-indexed semitone offsets above tonic)
   local root_I  = scale[1]  -- degree 1
   local root_II = scale[2]  -- degree 2
-  local root_V  = scale[5] - 12  -- degree 5
+  local root_V  = scale[5] - 12  -- degree 5, dropped an octave so the 3rd-in-bass
+                                  -- sits a half step below the tonic
 
   -- Build raw 8-note extended voicings
   local I_raw  = build_voicing(tonic, root_I,  CHORD_INTERVALS.I)
@@ -139,7 +151,7 @@ local function gen_sequence(seed, tonic, scale_name, attack_time, release_time)
 
   -- Build wait times
   -- Total window = attack_time * 8; 7 random interior points divide it into 8 intervals
-  local total_time  = attack_time * 8
+  local total_time = attack_time * 8
   local pts = {}
   for i = 1, 7 do pts[i] = math.random() * total_time end
   table.sort(pts)
@@ -194,30 +206,68 @@ local function gen_sequence(seed, tonic, scale_name, attack_time, release_time)
     rep({1}, 8)
   )
 
+  -- Velocity stacks, one 8-value array per section, each centred and permuted.
+  -- Sections:
+  --   I        centre 60  (section 1)
+  --   V6       centre 75  (section 1 + 15)
+  --   I[s]     centre 40  (slice section offsets: 40, 55, 65, 55)
+  --   I[s]     centre 55
+  --   V6[s]    centre 65
+  --   V6[s]    centre 55
+  --   II       centre 55
+  --   V6       centre 80
+  --   I        centre 40
+  --
+  -- Each base velocity array is 8 values; sliced sections use indices s..s+3.
+
+  local vel_I_a   = build_velocities(60, perm)   -- section 1 I
+  local vel_V6_a  = build_velocities(75, perm)   -- section 1 V6
+  local vel_Is1   = build_velocities(40, perm)   -- I slice repeat 1
+  local vel_Is2   = build_velocities(55, perm)   -- I slice repeat 2
+  local vel_V6s1  = build_velocities(65, perm)   -- V6 slice repeat 1
+  local vel_V6s2  = build_velocities(55, perm)   -- V6 slice repeat 2
+  local vel_II    = build_velocities(55, perm)   -- II section
+  local vel_V6_b  = build_velocities(80, perm)   -- closing V6
+  local vel_I_b   = build_velocities(40, perm)   -- closing I
+
+  local vel_stack = concat(
+    vel_I_a,
+    vel_V6_a,
+    slice(vel_Is1,  s, s + 3),
+    slice(vel_Is2,  s, s + 3),
+    slice(vel_V6s1, s, s + 3),
+    slice(vel_V6s2, s, s + 3),
+    vel_II,
+    vel_V6_b,
+    vel_I_b
+  )
+
   assert(#note_stack == 56, "note stack length mismatch: " .. #note_stack)
   assert(#time_stack == 56, "time stack length mismatch: " .. #time_stack)
+  assert(#vel_stack  == 56, "vel stack length mismatch: "  .. #vel_stack)
 
-  return {notes = note_stack, times=time_stack}
+  return {notes = note_stack, times = time_stack, velocities = vel_stack}
 end
 
-local function play_sequence(note_stack, time_stack)
+local function play_sequence(note_stack, time_stack, vel_stack)
   -- Play the sequence using a coroutine clock
   local note_seq = sequins(note_stack)
   local time_seq = sequins(time_stack)
+  local vel_seq  = sequins(vel_stack)
 
   clock.run(function()
     for _ = 1, 56 do
       local note     = note_seq()
       local wait_dur = time_seq()
-      engine.noteOn(note, 80, 0)
+      local vel      = vel_seq()
+      engine.noteOn(note, vel, 0)
       clock.sleep(wait_dur)
     end
     for i = 49, 56 do
       engine.noteOff(note_stack[i])
-      clock.sleep(release)
+      clock.sleep(release_time)
     end
   end)
-
 end
 
 return gen_sequence
