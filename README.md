@@ -4,6 +4,7 @@ A Lyra-8 inspired drone synthesizer for SuperCollider and Norns, designed for MP
 
 ![](img/screenshot.png)
 
+[Jörmungandr](https://soundcloud.com/shawn-garbett/jormungandr) Demo seed: 42, B locrian, 10s. 
 
 ## Overview
 
