@@ -1,14 +1,11 @@
 engine.name = 'Ygg'
 
+local gen_sequence = require('ygg/lib/gen_sequence')
 
 -- File paths
 local SAVE_DIR      = _path.data .. "ygg/"
 local SAVE_FILE     = SAVE_DIR .. "patches.txt"
 local DEFAULT_FILE  = _path.code .. "ygg/patches_default.txt"
-
--- For play demo
-local notes = {48, 52, 55, 58, 60, 64, 66}  -- C11 chord (C, E, G, Bb, C, E, F#)
-local step = 0
 
 -- Preload image
 local tree
@@ -43,6 +40,19 @@ local page = 1
 
 -- STATE Per-page selected param index (1-based); one entry per page_name entry
 local page_sel = { 1, 1, 1, 1, 1, 1, 1 }
+
+-- STATE Demo
+local demo_playing    = false
+local demo_clock_id   = nil
+local scale_names     = { "major", "natural_minor", "bhairav", "locrian" }
+local note_names      = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }
+
+-- Demo params are local state only — not part of the patch system
+local demo_seed       = 42
+local demo_tonic      = 48   -- C3
+local demo_scale_idx  = 1    -- index into scale_names
+local demo_attack     = 0.4  -- seconds per note slot
+local demo_sel        = 1    -- selected row on demo page (1-based)
 
 -- STATE MIDI
 -- ch_to_note maps MIDI channel (2-16) to the note currently playing on it.
@@ -494,20 +504,58 @@ function engine_ready()
 end
 
 -- ============================================================
--- Playback helpers
+-- Demo sequence playback
 -- ============================================================
 
-function play()
-  if step < 0 then
-    engine.note_off(notes[step + #notes + 1])
-  else
-    engine.note_on(notes[step + 1], 80)
+local function stop_sequence()
+  if demo_clock_id then
+    clock.cancel(demo_clock_id)
+    demo_clock_id = nil
   end
+  -- Release all voices cleanly
+  for note = 0, 127 do
+    engine.note_off(note)
+  end
+  demo_playing = false
+end
 
-  step = step + 1
-  if step >= #notes then
-    step = -#notes
-  end
+local function play_sequence()
+  stop_sequence()
+
+  local seq = gen_sequence(
+    demo_seed,
+    demo_tonic,
+    scale_names[demo_scale_idx],
+    demo_attack
+  )
+  if not seq then return end
+
+  demo_playing  = true
+  local release = params:get("ygg_release")
+
+  demo_clock_id = clock.run(function()
+    local note_seq = sequins(seq.notes)
+    local time_seq = sequins(seq.times)
+    local vel_seq  = sequins(seq.velocities)
+
+    for _ = 1, 56 do
+      local note = note_seq()
+      local wait = time_seq()
+      local vel  = vel_seq()
+      engine.note_on(note, vel)
+      clock.sleep(wait)
+    end
+
+    -- Release the final held notes
+    for i = 49, 56 do
+      engine.note_off(seq.notes[i])
+      clock.sleep(release / 8)
+    end
+
+    demo_playing  = false
+    demo_clock_id = nil
+    redraw()
+  end)
 end
 
 -- ============================================================
@@ -527,10 +575,14 @@ function key(n, z)
   end
 
   if n == 3 then
-    if page < #page_name then
+    if page_name[page] == 'Demo' then
+      if demo_playing then
+        stop_sequence()
+      else
+        play_sequence()
+      end
+    elseif page < #page_name then
       page = page + 1
-    else
-      play()
     end
   end
 
@@ -555,6 +607,21 @@ function enc(n, d)
     end
     if patch ~= prev_patch then
       recall_patch(patch)
+    end
+
+  elseif pname == 'Demo' then
+    if n == 2 then
+      demo_sel = util.clamp(demo_sel + (d > 0 and 1 or -1), 1, 4)
+    elseif n == 3 then
+      if demo_sel == 1 then
+        demo_seed = math.max(1, demo_seed + d)
+      elseif demo_sel == 2 then
+        demo_tonic = util.clamp(demo_tonic + d, 24, 84)
+      elseif demo_sel == 3 then
+        demo_scale_idx = util.clamp(demo_scale_idx + (d > 0 and 1 or -1), 1, #scale_names)
+      elseif demo_sel == 4 then
+        demo_attack = util.clamp(demo_attack + (d * 0.05), 0.05, 2.0)
+      end
     end
 
   elseif page_rows[pname] then
@@ -623,9 +690,34 @@ function draw_ygg()
 end
 
 function draw_demo()
+  local tonic_name = note_names[(demo_tonic % 12) + 1]
+  local tonic_oct  = math.floor(demo_tonic / 12) - 1
+
+  local labels = { "Seed", "Root", "Scale", "Spd" }
+  local values =
+  {
+    tostring(demo_seed),
+    tonic_name .. tostring(tonic_oct),
+    scale_names[demo_scale_idx],
+    string.format("%.2f", demo_attack),
+  }
+
+  for i = 1, 4 do
+    local y      = ROW_Y_START + (i - 1) * ROW_HEIGHT
+    local active = (i == demo_sel)
+
+    screen.level(active and 15 or 4)
+    screen.move(LABEL_X, y)
+    screen.text(labels[i])
+
+    screen.level(active and 15 or 10)
+    screen.move(VALUE_X, y)
+    screen.text(values[i])
+  end
+
   screen.level(15)
-  screen.move(2, 32)
-  screen.text("K3: Do Something")
+  screen.move(2, 62)
+  screen.text(demo_playing and "K3: Stop" or "K3: Demo")
 end
 
 -- ============================================================
