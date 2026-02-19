@@ -11,15 +11,21 @@ The original supercollider code will be removed in a future version.
 Ygg is an 8-voice polyphonic drone synthesizer with:
 - **Voice stealing** from oldest voice (ring buffer allocation)
 - **MPE support** (pitch bend and pressure per note)
-- **Cross-modulation matrix** with 3 routing modes
+- **Cross-modulation matrix** with 4 routing modes and local voice overrides.
 - **Harmonics morphing** (sine → square → saw)
 - **Leslie-style vibrato** for stereo expansion
 - **Hold mode** for sustained drones
 - **2-tap modulated delay**
-- **Tube-style distortion**
+- **Tube-style distortion** _It goes to 11!_
 - **Global LFO** with 4 modes
 
 ## Architecture
+
+### Main Screen
+
+On the main screen you will see Yggdrasil and it has 8 points that can be navigated on the tree. These are patches and can be changed live. Hitting the K2 on this screen saves the current state so it persists over reboots. The E2 and E3 encoders change the current patch. The current patch appears at the top left and they have reference names: Sol, Mani, Huginn, Muninn, Asgard, Midgard, Jormun and Gandr. One can scroll through screens using the K3 (and back with K2), and use the encoders to change parameters. The current page appears in the upper right. The last page is the Demo page and when one hits the K3 it begins a drone demo sequence, that is randomly generated based on a pattern and the user can specify the random seed used as well as the tonic note and scale. 
+
+It also supports MIDI MPE input. 
 
 ### Signal Flow
 
@@ -87,17 +93,8 @@ Voice pairs: 1-2, 3-4, 5-6, 7-8
 
 ### File Structure
 
-The Ygg engine comes in two flavors:
-
-**For SuperCollider (standalone):**
-
-- `sc/ygg_synths.scd` - SynthDef definitions (shared code)
-- `sc/ygg_manager.scd` - Manager class (loads synths automatically)
-- `demos/ygg_demo.scd` - Demo script
-
-**For Norns:**
-
 - `Omr.lua` - Main Monome Script
+- `lib/gen_sequence.lua` - Generate a drone sequence for demo (repeatable random seeding)
 - `lib/Engine_Ygg.sc` - Complete self-contained engine
 - `img/tree.png` - Logo
 
