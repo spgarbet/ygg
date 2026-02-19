@@ -52,7 +52,7 @@ local note_names      = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", 
 local demo_seed       = 42
 local demo_tonic      = 48   -- C3
 local demo_scale_idx  = 1    -- index into scale_names
-local demo_attack     = 0.4  -- seconds per note slot
+local demo_attack     = 20   -- seconds per note slot
 local demo_sel        = 1    -- selected row on demo page (1-based)
 
 -- STATE MIDI
@@ -621,7 +621,7 @@ function enc(n, d)
       elseif demo_sel == 3 then
         demo_scale_idx = util.clamp(demo_scale_idx + (d > 0 and 1 or -1), 1, #scale_names)
       elseif demo_sel == 4 then
-        demo_attack = util.clamp(demo_attack + (d * 0.05), 0.05, 2.0)
+        demo_attack = util.clamp(demo_attack + (d * 0.05), 0.05, 60.0)
       end
     end
 
