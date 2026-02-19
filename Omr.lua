@@ -44,6 +44,12 @@ local page = 1
 -- STATE Per-page selected param index (1-based); one entry per page_name entry
 local page_sel = { 1, 1, 1, 1, 1, 1, 1 }
 
+-- STATE MIDI
+-- ch_to_note maps MIDI channel (2-16) to the note currently playing on it.
+-- This lets pitch bend and pressure messages find the right engine voice.
+local midi_devices = {}
+local ch_to_note   = {}
+
 -- ============================================================
 -- Params
 -- ============================================================
@@ -319,7 +325,6 @@ local function deserialize_patches(text)
 end
 
 local function save_patches()
-  --print("save_patches() to ".. SAVE_FILE)
   util.make_dir(SAVE_DIR)
   local f = io.open(SAVE_FILE, "w")
   if f then
@@ -403,11 +408,70 @@ local function draw_param_page(pname)
 end
 
 -- ============================================================
+-- MIDI / MPE
+-- Channel 1 = global zone (CC1 mod wheel)
+-- Channels 2-16 = per-note voice channels
+-- ============================================================
+
+function midi_event(msg)
+  local ch = msg.ch
+
+  if msg.type == "note_on" and msg.vel > 0 then
+    if ch >= 2 then
+      ch_to_note[ch] = msg.note
+      engine.note_on(msg.note, msg.vel)
+    end
+
+  elseif msg.type == "note_off" or
+        (msg.type == "note_on" and msg.vel == 0) then
+    if ch >= 2 then
+      engine.note_off(msg.note)
+      ch_to_note[ch] = nil
+    end
+
+  elseif msg.type == "pitchbend" then
+    if ch >= 2 then
+      local note = ch_to_note[ch]
+      if note then
+        -- Convert 14-bit pitchbend (0-16383, centre 8192) to semitones (-48 to +48)
+        local bend_st = ((msg.val - 8192) / 8192) * 48
+        engine.pitch_bend(note, bend_st)
+      end
+    end
+
+  elseif msg.type == "aftertouch" then
+    -- Per-note pressure (channel aftertouch on voice channel)
+    if ch >= 2 then
+      local note = ch_to_note[ch]
+      if note then
+        local pressure = msg.val / 127
+        engine.pressure(note, pressure)
+      end
+    end
+
+  elseif msg.type == "cc" then
+    -- CC1 mod wheel on any channel maps to mod_depth
+    if msg.cc == 1 then
+      local depth = msg.val / 127
+      params:set("ygg_mod_depth", depth)
+    end
+  end
+end
+
+-- ============================================================
 -- init
 -- ============================================================
 
 function init()
   add_params()
+
+  -- Connect to all available MIDI devices
+  for i = 1, #midi.vports do
+    midi_devices[i] = midi.connect(i)
+    midi_devices[i].event = function(data)
+      midi_event(midi.to_msg(data))
+    end
+  end
 
   tree = screen.load_png(_path.code .. "ygg/img/tree.png")
   assert(tree, "tree.png failed to load")
