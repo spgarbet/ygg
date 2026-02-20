@@ -1,6 +1,6 @@
 -- Ygg
 -- Drone Synthesizer
--- v0.2 @cybergarp
+-- v0.3 @cybergarp
 --
 -- MPE Organismic Synthesizer
 -- Navigation: K2 K3
@@ -177,7 +177,7 @@ function add_params()
   }
 
   params:add_option("ygg_lfo_style", "lfo_style",
-    { "Sine A", "A+B Mix", "Ring Mod", "Slewed Ring" }, 1)
+    { "Sine A", "A+B Mix", "Ring Mod", "Slewed Ring", "FM" }, 1)
   params:set_action("ygg_lfo_style", send_lfo)
 
   params:add_group("Ygg: Per Voice", 16)
@@ -212,7 +212,7 @@ end
 -- rows that draw_param_page and enc will use generically.
 -- Option params carry a values[] list for display.
 --
-local style_names      = { "Sine A", "A+B Mix", "Ring Mod", "Slewed" }
+local style_names      = { "Sine A", "A+B Mix", "Ring Mod", "Slewed", "FM"}
 local routing_names    = { "Self", "Cross", "Neighbor", "Loop" }
 local mod_source_names = { "Voice", "LFO", "pre Delay", "Line Out" }
 

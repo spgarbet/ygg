@@ -162,7 +162,8 @@ Engine_Ygg : CroneEngine {
         oscA,
         (oscA + oscB) * 0.5,
         oscA * oscB,
-        Lag.ar(oscA * oscB * 0.9, 0.1)
+        Lag.ar(oscA * oscB * 0.9, 0.1),
+        SinOsc.ar(freqA + (oscB * freqA))
       ]);
 
       Out.ar(out, lfo);
