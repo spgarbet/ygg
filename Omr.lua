@@ -1,108 +1,98 @@
 -- Ygg
 -- Drone Synthesizer
--- v0.1 @cybergarp
+-- v0.2 @cybergarp
 --
--- A Drone Synthesizer inspired by the Lyra-8
--- 
--- Page navigation is via K2 and K3. Encoder knobs change parameters.
--- The first screen with a tree has 8 patches. One can change a patch
--- using the encoder knobs. If one hits K2 on the tree screen it saves
--- the current state. The very last screen is a short drone generative
--- demo. Pick a key and scale, and hit K3 to start (or stop) the demo. 
--- Scroll back through parameters and tweak-- or switch patches from 
--- the tree screen. The factory patches are vastly different and
--- do not result in smooth transitions, however, as a user one
--- can construct a set of patches that are not that different. Notes
--- are playable via MPE as well.
+-- MPE Organismic Synthesizer
+-- Navigation: K2 K3
+-- Parameters: E2 E3
+-- Demo on Last Page
 
-engine.name = 'Ygg'
+engine.name           = 'Ygg'
 
-local gen_sequence = require('ygg/lib/gen_sequence')
-local sequins      = require('sequins')
+local gen_sequence    = require('ygg/lib/gen_sequence')
+local sequins         = require('sequins')
 
 -- File paths
-local SAVE_DIR      = _path.data .. "ygg/"
-local SAVE_FILE     = SAVE_DIR .. "patches.txt"
-local DEFAULT_FILE  = _path.code .. "ygg/patches_default.txt"
+local SAVE_DIR        = _path.data .. "ygg/"
+local SAVE_FILE       = SAVE_DIR   .. "patches.txt"
+local DEFAULT_FILE    = _path.code .. "ygg/patches_default.txt"
 
 -- Preload image
 local tree
 
 -- Main log lattice coordinates
-local COLS        = 2
-local ROWS        = 4
-local grid_x      = { 15, 48, 17, 46, 17, 46, 24, 38 }
-local grid_y      = {  9,  9, 22, 22, 39, 39, 53, 53 }
-local patch_name  = { 'Sol', 'Mani', 'Huginn', 'Muninn', 'Asgard', 'Midgard', 'Jormun', 'Gandr' }
-local page_name   = { 'Ygg', 'Ginnun', 'LFO', 'Delay', 'Dist', 'Voice', 'Demo' }
+local COLS            = 2
+local ROWS            = 4
+local grid_x          = { 15, 48, 17, 46, 17, 46, 24, 38 }
+local grid_y          = {  9,  9, 22, 22, 39, 39, 53, 53 }
+local patch_name      = { 'Sol', 'Mani', 'Huginn', 'Muninn', 'Asgard', 'Midgard', 'Jormun', 'Gandr' }
+local page_name       = { 'Ygg', 'Ginnun', 'LFO', 'Delay', 'Dist', 'Voice', 'Demo' }
 
 -- Screen layout constants
-local ROWS_VISIBLE = 4   -- how many param rows fit between the header and bottom
-local ROW_Y_START  = 22  -- y of the first param row
-local ROW_HEIGHT   = 10  -- px between rows
-local LABEL_X      = 2
-local VALUE_X      = 30
-local ARROW_X      = 122 -- x for scroll indicators (right-aligned)
+local ROWS_VISIBLE    = 4   -- how many param rows fit between the header and bottom
+local ROW_Y_START     = 22  -- y of the first param row
+local ROW_HEIGHT      = 10  -- px between rows
+local LABEL_X         = 2
+local VALUE_X         = 30
+local ARROW_X         = 122 -- x for scroll indicators (right-aligned)
 
 -- STATE Current lattice position (col and row, 1-indexed)
-local col   = 1
-local row   = 1
-local patch = 1
+local col             = 1
+local row             = 1
+local patch           = 1
 
 -- STATE Blink state
-local blink = false
+local blink           = false
 local blink_timer
 
 -- STATE Current page
-local page = 1
+local page            = 1
 
 -- STATE Per-page selected param index (1-based); one entry per page_name entry
-local page_sel = { 1, 1, 1, 1, 1, 1, 1 }
+local page_sel        = { 1, 1, 1, 1, 1, 1, 1 }
 
 -- STATE Demo
 local demo_playing    = false
 local demo_clock_id   = nil
 local scale_names     = { "major", "natural_minor", "bhairav", "locrian" }
 local note_names      = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }
-
--- Demo params are local state only — not part of the patch system
 local demo_seed       = 42
 local demo_tonic      = 48   -- C3
 local demo_scale_idx  = 1    -- index into scale_names
-local demo_attack     = 10   -- seconds per note slot
+local demo_attack     = 5    -- seconds per note slot
 local demo_sel        = 1    -- selected row on demo page (1-based)
 
 -- STATE MIDI
 -- ch_to_note maps MIDI channel (2-16) to the note currently playing on it.
 -- This lets pitch bend and pressure messages find the right engine voice.
-local midi_devices = {}
-local ch_to_note   = {}
+local midi_devices    = {}
+local ch_to_note      = {}
 
--- ============================================================
+  -------------------------------------------------------------
+ --
 -- Params
--- ============================================================
-
+--
 local specs =
 {
-  ["attack"]        = controlspec.new(0.001, 20.0, 'exp', 0,     10.0, "s"),
-  ["release"]       = controlspec.new(0.001, 20.0, 'exp', 0,      3.0, "s"),
-  ["hold"]          = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.0, ""),
-  ["harmonics"]     = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.5, ""),
-  ["vibrato_depth"] = controlspec.new(0.0,   0.1,  'lin', 0.001,  0.01,""),
-  ["mod_depth"]     = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.3, ""),
-  ["lfo_freq_a"]    = controlspec.new(0.01, 20.0,  'exp', 0,      0.1, "Hz"),
-  ["lfo_freq_b"]    = controlspec.new(0.01, 20.0,  'exp', 0,      0.2, "Hz"),
-  ["delay_time_1"]  = controlspec.new(0.001, 2.0,  'lin', 0.001,  0.25, "s"),
-  ["delay_time_2"]  = controlspec.new(0.001, 2.0,  'lin', 0.001,  0.50, "s"),
-  ["delay_fb"]      = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.3, ""),
-  ["delay_mix"]     = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.3, ""),
-  ["delay_mod_1"]   = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.0, ""),
-  ["delay_mod_2"]   = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.0, ""),
-  ["dist_drive"]    = controlspec.new(1.0,  11.0,  'lin', 0.1,    1.0, ""),
-  ["dist_mix"]      = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.0, ""),
+  ["attack"]          = controlspec.new(0.001, 20.0, 'exp', 0,     10.0, "s"),
+  ["release"]         = controlspec.new(0.001, 20.0, 'exp', 0,      3.0, "s"),
+  ["hold"]            = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.0, ""),
+  ["harmonics"]       = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.5, ""),
+  ["vibrato_depth"]   = controlspec.new(0.0,   0.1,  'lin', 0.001,  0.01,""),
+  ["mod_depth"]       = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.3, ""),
+  ["lfo_freq_a"]      = controlspec.new(0.01, 20.0,  'exp', 0,      0.1, "Hz"),
+  ["lfo_freq_b"]      = controlspec.new(0.01, 20.0,  'exp', 0,      0.2, "Hz"),
+  ["delay_time_1"]    = controlspec.new(0.001, 2.0,  'lin', 0.001,  0.25, "s"),
+  ["delay_time_2"]    = controlspec.new(0.001, 2.0,  'lin', 0.001,  0.50, "s"),
+  ["delay_fb"]        = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.3, ""),
+  ["delay_mix"]       = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.3, ""),
+  ["delay_mod_1"]     = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.0, ""),
+  ["delay_mod_2"]     = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.0, ""),
+  ["dist_drive"]      = controlspec.new(1.0,  11.0,  'lin', 0.1,    1.0, ""),
+  ["dist_mix"]        = controlspec.new(0.0,   1.0,  'lin', 0.01,   0.0, ""),
 }
 
-local param_groups =
+local param_groups    =
 {
   {
     label = "Voice",
@@ -214,13 +204,14 @@ function add_params()
   end
 end
 
--- ============================================================
+  -------------------------------------------------------------
+ --
 -- Page definitions
+--
 -- Each entry maps a page_name to a list of { label, param_id }
 -- rows that draw_param_page and enc will use generically.
 -- Option params carry a values[] list for display.
--- ============================================================
-
+--
 local style_names      = { "Sine A", "A+B Mix", "Ring Mod", "Slewed" }
 local routing_names    = { "Self", "Cross", "Neighbor", "Loop" }
 local mod_source_names = { "Voice", "LFO", "pre Delay", "Line Out" }
@@ -278,13 +269,14 @@ local page_rows =
   ["Voice"] = voice_rows,
 }
 
--- ============================================================
+  -------------------------------------------------------------
+ --
 -- Patch system
+--
 -- patch_ids is the canonical ordered list of every param that
 -- belongs to a patch snapshot. It is built once from page_rows
 -- so it stays automatically in sync if rows are ever added.
--- ============================================================
-
+--
 local patch_ids = {}
 do
   -- Collect all unique param IDs from every page_rows entry
@@ -393,10 +385,6 @@ local function load_patches()
   print("Ygg: WARNING no patch file found patch slots are blank!")
 end
 
--- ============================================================
--- Generic param page value formatter
--- ============================================================
-
 local function format_row(row_def)
   -- Option params carry a values table; everything else uses params:string()
   if row_def.values then
@@ -404,10 +392,6 @@ local function format_row(row_def)
   end
   return params:string(row_def.id)
 end
-
--- ============================================================
--- Generic scrollable param page draw
--- ============================================================
 
 local function draw_param_page(pname)
   local rows   = page_rows[pname]
@@ -445,12 +429,12 @@ local function draw_param_page(pname)
   end
 end
 
--- ============================================================
+  -------------------------------------------------------------
+ --
 -- MIDI / MPE
 -- Channel 1 = global zone (CC1 mod wheel)
 -- Channels 2-16 = per-note voice channels
--- ============================================================
-
+--
 function midi_event(msg)
   local ch = msg.ch
 
@@ -496,43 +480,10 @@ function midi_event(msg)
   end
 end
 
--- ============================================================
--- init
--- ============================================================
-
-function init()
-  add_params()
-  params:bang()
-  load_patches()
-  recall_patch(patch)
-
-  -- Connect to all available MIDI devices
-  for i = 1, #midi.vports do
-    midi_devices[i] = midi.connect(i)
-    midi_devices[i].event = function(data)
-      midi_event(midi.to_msg(data))
-    end
-  end
-
-  tree = screen.load_png(_path.code .. "ygg/img/tree.png")
-  assert(tree, "tree.png failed to load")
-
-  blink_timer = metro.init(
-    function()
-      blink = not blink
-      redraw()
-    end,
-    0.4,
-    -1
-  )
-  blink_timer:start()
-  redraw()
-end
-
--- ============================================================
--- Demo sequence playback
--- ============================================================
-
+  -------------------------------------------------------------
+ --
+-- Demo Player
+--
 local function stop_sequence()
   if demo_clock_id then
     clock.cancel(demo_clock_id)
@@ -584,92 +535,10 @@ local function play_sequence()
   end)
 end
 
--- ============================================================
--- Keys
--- ============================================================
-
-function key(n, z)
-  if z ~= 1 or n == 1 then return end
-
-  if n == 2 then
-    if page_name[page] == 'Ygg' then
-      save_patch(patch)
-      save_patches()
-    elseif page > 1 then
-      page = page - 1
-    end
-  end
-
-  if n == 3 then
-    if page_name[page] == 'Demo' then
-      if demo_playing then
-        stop_sequence()
-      else
-        play_sequence()
-      end
-    elseif page < #page_name then
-      page = page + 1
-    end
-  end
-
-  redraw()
-end
-
--- ============================================================
--- Encoders
--- ============================================================
-
-function enc(n, d)
-  local pname = page_name[page]
-
-  if pname == 'Ygg' then
-    local prev_patch = patch
-    if n == 2 then
-      row   = util.clamp(row - (d > 0 and 1 or -1), 1, ROWS)
-      patch = (row - 1) * COLS + col
-    elseif n == 3 then
-      col   = util.clamp(col + (d > 0 and 1 or -1), 1, COLS)
-      patch = (row - 1) * COLS + col
-    end
-    if patch ~= prev_patch then
-      recall_patch(patch)
-    end
-
-  elseif pname == 'Demo' then
-    if n == 2 then
-      demo_sel = util.clamp(demo_sel + (d > 0 and 1 or -1), 1, 4)
-    elseif n == 3 then
-      if demo_sel == 1 then
-        demo_seed = math.max(1, demo_seed + d)
-      elseif demo_sel == 2 then
-        demo_tonic = util.clamp(demo_tonic + d, 24, 84)
-      elseif demo_sel == 3 then
-        demo_scale_idx = util.clamp(demo_scale_idx + (d > 0 and 1 or -1), 1, #scale_names)
-      elseif demo_sel == 4 then
-        demo_attack = util.clamp(demo_attack + (d * 0.05), 0.05, 60.0)
-      end
-    end
-
-  elseif page_rows[pname] then
-    -- Generic handler for all param pages
-    local rows  = page_rows[pname]
-    local nrows = #rows
-
-    if n == 2 then
-      page_sel[page] = util.clamp(page_sel[page] + (d > 0 and 1 or -1), 1, nrows)
-    elseif n == 3 then
-      local row_def = rows[page_sel[page]]
-      params:delta(row_def.id, d)
-    end
-  end
-
-  redraw()
-end
-
--- ============================================================
--- Draw functions
--- ============================================================
-
+  -------------------------------------------------------------
+ --
+-- Draw Screen
+--
 local function draw_star(x, y)
   local s = 5
   screen.move(x - s, y)
@@ -746,9 +615,111 @@ function draw_demo()
   screen.text(demo_playing and "K3: Stop" or "K3: Demo")
 end
 
--- ============================================================
--- Redraw
--- ============================================================
+  -------------------------------------------------------------
+ --
+-- Main Norns Functions
+--
+function init()
+  add_params()
+  params:bang()
+  load_patches()
+  recall_patch(patch)
+
+  -- Connect to all available MIDI devices
+  for i = 1, #midi.vports do
+    midi_devices[i] = midi.connect(i)
+    midi_devices[i].event = function(data)
+      midi_event(midi.to_msg(data))
+    end
+  end
+
+  tree = screen.load_png(_path.code .. "ygg/img/tree.png")
+  assert(tree, "tree.png failed to load")
+
+  blink_timer = metro.init(
+    function()
+      blink = not blink
+      redraw()
+    end,
+    0.4,
+    -1
+  )
+  blink_timer:start()
+  redraw()
+end
+
+function key(n, z)
+  if z ~= 1 or n == 1 then return end
+
+  if n == 2 then
+    if page_name[page] == 'Ygg' then
+      save_patch(patch)
+      save_patches()
+    elseif page > 1 then
+      page = page - 1
+    end
+  end
+
+  if n == 3 then
+    if page_name[page] == 'Demo' then
+      if demo_playing then
+        stop_sequence()
+      else
+        play_sequence()
+      end
+    elseif page < #page_name then
+      page = page + 1
+    end
+  end
+
+  redraw()
+end
+
+function enc(n, d)
+  local pname = page_name[page]
+
+  if pname == 'Ygg' then
+    local prev_patch = patch
+    if n == 2 then
+      row   = util.clamp(row - (d < 0 and 1 or -1), 1, ROWS)
+      patch = (row - 1) * COLS + col
+    elseif n == 3 then
+      col   = util.clamp(col + (d > 0 and 1 or -1), 1, COLS)
+      patch = (row - 1) * COLS + col
+    end
+    if patch ~= prev_patch then
+      recall_patch(patch)
+    end
+  elseif pname == 'Demo' then
+    if n == 2 then
+      demo_sel = util.clamp(demo_sel + (d > 0 and 1 or -1), 1, 4)
+    elseif n == 3 then
+      if demo_sel == 1 then
+        demo_seed = math.max(1, demo_seed + d)
+      elseif demo_sel == 2 then
+        demo_tonic = util.clamp(demo_tonic + d, 24, 84)
+      elseif demo_sel == 3 then
+        demo_scale_idx = util.clamp(demo_scale_idx + (d > 0 and 1 or -1), 1, #scale_names)
+      elseif demo_sel == 4 then
+        demo_attack = util.clamp(demo_attack + (d * 0.05), 0.05, 60.0)
+      end
+    end
+
+  elseif page_rows[pname] then
+    -- Generic handler for all param pages
+    local rows  = page_rows[pname]
+    local nrows = #rows
+
+    if n == 2 then
+      page_sel[page] = util.clamp(page_sel[page] + (d > 0 and 1 or -1), 1, nrows)
+    elseif n == 3 then
+      local row_def = rows[page_sel[page]]
+      params:delta(row_def.id, d)
+    end
+  end
+
+  redraw()
+end
 
 function redraw()
   screen.clear()
