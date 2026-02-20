@@ -11,7 +11,7 @@ A Lyra-8 inspired drone synthesizer for SuperCollider and Norns, designed for MP
 ## Overview
 
 Ygg is an 8-voice polyphonic drone synthesizer with:
-- **Voice stealing** from oldest voice (ring buffer allocation)
+- **Voice stealing** from oldest voice (ring buffer allocation), with hold after release.
 - **MPE support** (pitch bend and pressure per note)
 - **Cross-modulation matrix** with 4 routing modes and local voice overrides.
 - **Harmonics morphing** (sine → square → saw)
@@ -51,7 +51,11 @@ It also supports MIDI MPE input.
 - `harmonics` - Waveform morph (0=sine, 0.5=square, 1.0=saw)
 - `pitch_bend` - MPE pitch bend in semitones
 - `pressure` - MPE pressure (0-1, scales amplitude)
-- `voice_mod_source` - Modulation source (0=crossover voice, 1=lfo, 2=predelay, 3=predrive, 4=main)
+- `voice_mod_source` - Modulation source
+  - **Cross Modulation Voice**: 1
+  - **LFO**: 2
+  - **Pre Delay**: 3
+  - **Line Out**: 4
 
 ### Global Parameters
 
@@ -59,24 +63,20 @@ It also supports MIDI MPE input.
 
 - `mod_depth` (0-1)
 - `routing`
-
-Voice pairs: 1-2, 3-4, 5-6, 7-8
-
-**Self (0)**: 1 ↔ 2, 3 ↔ 4, 5 ↔ 6, 7 ↔ 8, 
-**Neighbor (1)**: 1-2 ↔ 3-4, 5-6 ↔ 7-8  
-**Cross (2)**: 1-2 ↔ 5-6, 3-4 ↔ 7-8  
-**Loop (3)**: 1-2 → 3-4 → 5-6 → 7-8 → 1-2
+  - **Self (1)**: 1 ↔ 2, 3 ↔ 4, 5 ↔ 6, 7 ↔ 8, 
+  - **Neighbor (2)**: 1-2 ↔ 3-4, 5-6 ↔ 7-8  
+  - **Cross (3)**: 1-2 ↔ 5-6, 3-4 ↔ 7-8  
+  - **Loop (4)**: 1-2 → 3-4 → 5-6 → 7-8 → 1-2
 
 ### LFO Modes
 
-- freqA
-- freqB
-- style
-
-- **Single (0)**: Use freqA only
-- **Sum (1)**: freqA + freqB
-- **Product (2)**: freqA × freqB
-- **FM (3)**: Soft frequency modulation
+- `freqA`
+- `freqB`
+- `style`
+  - **Single (1)**: Use freqA only
+  - **Sum (2)**: freqA + freqB
+  - **Product (3)**: freqA × freqB
+  - **FM (4)**: Soft frequency modulation
 
 ### Delay Parameters
 
