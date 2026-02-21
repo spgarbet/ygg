@@ -3,6 +3,7 @@
 - Added FM LFO Mode
 - Added more demo scales
 - Added a Gated LFO Mode for delay taps
+- Release all notes at end of demo
 
 # v0.2
 

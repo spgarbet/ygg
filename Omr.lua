@@ -547,7 +547,7 @@ local function play_sequence()
       engine.note_off(seq.notes[i])
       clock.sleep(release)
     end
-
+    engine.panic()
     demo_playing  = false
     demo_clock_id = nil
     redraw()

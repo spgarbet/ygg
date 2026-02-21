@@ -564,6 +564,12 @@ Engine_Ygg : CroneEngine {
       arg msg;
       delay.set(\modType, msg[1].asInteger);
     });
+
+    this.addCommand(\panic, "",
+    {
+      arg msg;
+      this.panic;
+    });
   }
 
   noteOn
@@ -624,6 +630,12 @@ Engine_Ygg : CroneEngine {
       arg i;
       voices[i].set(param, value);
     };
+  }
+
+  panic
+  {
+    activeNotes.keysDo { arg note; this.noteOff(note) };
+    activeNotes.clear;
   }
 
   free
