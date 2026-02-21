@@ -9,13 +9,14 @@
 
 engine.name           = 'Ygg'
 
-local gen_sequence    = require('Ygg/lib/gen_sequence')
+local gen_sequence    = require(engine.name .. '/lib/gen_sequence')
 local sequins         = require('sequins')
 
 -- File paths
-local SAVE_DIR        = _path.data .. "Ygg/"
-local SAVE_FILE       = SAVE_DIR   .. "patches.txt"
-local DEFAULT_FILE    = _path.code .. "Ygg/patches_default.txt"
+local CODE_DIR        = _path.code .. engine.name .. "/"
+local DATA_DIR        = _path.data .. engine.name .. "/"
+local SAVE_FILE       = DATA_DIR   .. "patches.txt"
+local DEFAULT_FILE    = CODE_DIR   .. "patches_default.txt"
 
 -- Preload image
 local tree
@@ -364,7 +365,7 @@ local function deserialize_patches(text)
 end
 
 local function save_patches()
-  util.make_dir(SAVE_DIR)
+  util.make_dir(DATA_DIR)
   local f = io.open(SAVE_FILE, "w")
   if f then
     f:write(serialize_patches(patches))
@@ -652,7 +653,7 @@ function init()
     end
   end
 
-  tree = screen.load_png(_path.code .. "Ygg/img/tree.png")
+  tree = screen.load_png(CODE_DIR .. "img/tree.png")
   assert(tree, "tree.png failed to load")
 
   blink_timer = metro.init(
