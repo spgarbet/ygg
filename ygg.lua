@@ -1,4 +1,4 @@
--- Ygg
+-- ygg
 -- Drone Synthesizer
 -- v0.3 @cybergarp
 --
