@@ -1,4 +1,4 @@
--- ygg
+-- Ygg
 -- Drone Synthesizer
 -- v0.3 @cybergarp
 --
@@ -9,13 +9,13 @@
 
 engine.name           = 'Ygg'
 
-local gen_sequence    = require('ygg/lib/gen_sequence')
+local gen_sequence    = require('Ygg/lib/gen_sequence')
 local sequins         = require('sequins')
 
 -- File paths
-local SAVE_DIR        = _path.data .. "ygg/"
+local SAVE_DIR        = _path.data .. "Ygg/"
 local SAVE_FILE       = SAVE_DIR   .. "patches.txt"
-local DEFAULT_FILE    = _path.code .. "ygg/patches_default.txt"
+local DEFAULT_FILE    = _path.code .. "Ygg/patches_default.txt"
 
 -- Preload image
 local tree
@@ -652,7 +652,7 @@ function init()
     end
   end
 
-  tree = screen.load_png(_path.code .. "ygg/img/tree.png")
+  tree = screen.load_png(_path.code .. "Ygg/img/tree.png")
   assert(tree, "tree.png failed to load")
 
   blink_timer = metro.init(
