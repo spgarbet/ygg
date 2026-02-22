@@ -10,6 +10,8 @@ A Lyra-8 inspired drone synthesizer for SuperCollider and Norns, designed for MP
 
 ## Overview
 
+`;install https://github.com/spgarbet/Ygg`
+
 Ygg is an 8-voice polyphonic drone synthesizer with:
 - **Voice stealing** from oldest voice (ring buffer allocation), with hold after release.
 - **MPE support** (pitch bend and pressure per note)
@@ -61,6 +63,10 @@ It also supports MIDI MPE input.
 
 #### Cross-Modulation 
 
+- `attack` (0-20) Attack time
+- `release` (0-20) Release time
+- `hold` (0-1) Hold level (a note going over this amp can't fall below it)
+- `vibrato_depth` (0-0.1) 
 - `mod_depth` (0-1)
 - `routing`
   - **Self (1)**: 1 ↔ 2, 3 ↔ 4, 5 ↔ 6, 7 ↔ 8, 
@@ -70,26 +76,36 @@ It also supports MIDI MPE input.
 
 ### LFO Modes
 
-- `freqA`
-- `freqB`
-- `style`
+- `lfo_freq_a`
+- `lfo_freq_b`
+- `lfo_style`
   - **Single (1)**: Use freqA only
   - **Sum (2)**: freqA + freqB
   - **Product (3)**: freqA × freqB
-  - **FM (4)**: Soft frequency modulation
+  - **Slewed (4)**: Soft slewing
+  - **FM (5)**: Frequency modulation
 
 ### Delay Parameters
 
-- `delay_time` - Two taps times (0-2 seconds)
-- `delay_mod` - Two taps modulation depth
+- `delay_time_1`, `ygg_delay_time_2` - Delay taps times (0-2 seconds)
+- `delay_mod_1`, `ygg_delay_mod_2` - Two taps modulation depth
 - `delay_fb` - Feedback amount (0-1)
 - `delay_mix` - Dry/wet mix (0-1)
-- `delay_mod` - Modulation source (lfo/self)
+- `delay_mod_type` - 1: Normal, 2: Gated (Square Wave) LFO
 
 ### Distortion Parameters
 
-- `distDrive` - Drive amount (1-11)
-- `distMix` - Dry/wet mix (0-1)
+- `dist_drive` - Drive amount (1-11)
+- `dist_mix` - Dry/wet mix (0-1)
+
+### Voice Parameters
+
+- `vib_n` - Vibrato frequency (0-20)
+- `mod_src_n` -
+  - **Voice (1)**: Use cross modulation voice
+  - **LFO (2)**: Use LFO output
+  - **pre Delay (3)**: Use pre delay output  
+  - **Line Out (4)**: Use final line out
 
 ## AI Disclosure
 
